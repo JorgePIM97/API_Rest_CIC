@@ -247,3 +247,175 @@ GET
   ↓
 Postman
 ```
+
+## Estado actual
+
+### Conexión con SQL Server
+La conexión entre Django y SQL Server fue validada correctamente mediante `python manage.py dbshell`. La base confirmada es `ForceSyncDB_Worker`.
+
+### Convención de modelos
+| SQL Server | Django |
+|---|---|
+| `Users` | `ForceUser` |
+| `Accounts` | `Account` |
+| `Activities` | `Activity` |
+| `Calendars` | `Calendar` |
+| `Opportunities` | `Opportunity` |
+| `dev_Detalle_Corregida` | `DevDetalleCorregida` |
+
+Los modelos de tablas existentes se mantienen con `managed = False`.
+
+## ForceUser
+Se renombró el modelo `Users` a `ForceUser`, manteniendo `db_table = 'Users'`.
+
+Se agregó:
+
+```python
+def __str__(self):
+    return f"{self.name} {self.lastname}"
+```
+
+Pruebas realizadas:
+
+```python
+ForceUser.objects.count()
+```
+
+Resultado: `81`.
+
+También se validó la consulta de los primeros cinco usuarios y la representación legible de objetos.
+
+## Activity
+Se incorporó `Activity` a partir de `inspectdb` y se validó lectura ORM.
+
+Ejemplo de relación lógica comprobada:
+
+```text
+Activity.salesrepid_id = 69
+→ ForceUser.id = 69
+→ SILVINO LOPEZ
+```
+
+## Integridad de relaciones con Users
+SQL Server no contiene restricciones `FOREIGN KEY` físicas para las tablas analizadas.
+
+### Activities → Users
+| Estado | Cantidad |
+|---|---:|
+| Válido | 55,266 |
+| ID sin usuario | 1 |
+| 0 | 5 |
+
+### Calendars → Users
+| Estado | Cantidad |
+|---|---:|
+| Válido | 20,473 |
+| NULL | 6 |
+
+### Opportunities → Users
+| Estado | Cantidad |
+|---|---:|
+| Válido | 5,812 |
+| ID sin usuario | 2 |
+| 0 | 4 |
+
+### Accounts → Users
+Se comprobó que `SalesRepId1_Id` a `SalesRepId5_Id` contienen IDs que pueden corresponder con vendedores de `Users`, pero también pueden existir valores `0`, `NULL` o datos históricos sin correspondencia.
+
+## Prueba temporal de ForeignKey en Activity
+Se probó temporalmente:
+
+```python
+sales_rep = models.ForeignKey(
+    ForceUser,
+    on_delete=models.DO_NOTHING,
+    db_column='SalesRepId_Id',
+    related_name='activities',
+    blank=True,
+    null=True,
+    db_constraint=False,
+)
+```
+
+Funcionó correctamente para IDs válidos. Por ejemplo:
+
+```python
+activity.sales_rep
+```
+
+devolvió `SILVINO LOPEZ`.
+
+La relación inversa también funcionó:
+
+```python
+user.activities.count()
+```
+
+Resultado para `ForceUser.id = 69`: `62`.
+
+Sin embargo, al consultar una actividad con `SalesRepId_Id = 0`:
+
+```python
+Activity.objects.get(id=428).sales_rep
+```
+
+Django produjo `ForceUser.DoesNotExist`.
+
+### Decisión de diseño
+Para relaciones cuya integridad no está garantizada se conservará el identificador como `IntegerField` y la asociación se resolverá de forma segura en la capa de API.
+
+Ejemplo:
+
+```python
+ForceUser.objects.filter(id=activity.salesrepid_id).first()
+```
+
+Así un ID inexistente devuelve `None` en lugar de producir una excepción.
+
+## dev_Detalle_Corregida
+`inspectdb` generó `DevDetalleCorregida` con `managed = False` y `db_table = 'dev_Detalle_Corregida'`.
+
+El campo relevante es:
+
+```python
+id_vendedor_fm = models.IntegerField(
+    db_column='Id_Vendedor_FM',
+    blank=True,
+    null=True
+)
+```
+
+### Validación de Id_Vendedor_FM
+| Estado | Cantidad |
+|---|---:|
+| ID válido en Users | 3,808 |
+| 0 | 5,752 |
+
+Relación con `RepresentanteDeVentas`:
+
+| Tipo | Cantidad |
+|---|---:|
+| ID + VENDEDOR | 3,808 |
+| 0 + PISO | 5,598 |
+| 0 + NO PISO | 154 |
+
+Los 154 casos `0 + NO PISO` son:
+
+| RepresentanteDeVentas | Cantidad |
+|---|---:|
+| Patio GPA Technical Services | 90 |
+| Rafael Arango | 63 |
+| GPA | 1 |
+
+### Regla de negocio identificada
+`Id_Vendedor_FM > 0` representa un vendedor asociado a `Users.Id`.
+
+`Id_Vendedor_FM = 0` indica que no existe asociación válida con un usuario concreto de Force Manager. La mayoría corresponde a representantes `Piso...`, aunque también existen otros representantes especiales.
+
+Por este motivo `DevDetalleCorregida.id_vendedor_fm` permanecerá como `IntegerField`.
+
+## Principio adoptado para la base heredada
+No se convertirá automáticamente a `ForeignKey` cualquier columna que parezca contener un ID. Antes se validarán estructura, restricciones SQL, calidad de datos y significado de negocio.
+
+## Próximo paso
+Continuar incorporando y validando `Calendar`, `Opportunity`, `Account` y `DevDetalleCorregida` en `forcesync/models.py`. Después se iniciará la primera API GET con Django REST Framework.

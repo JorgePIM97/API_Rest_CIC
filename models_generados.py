@@ -8,7 +8,7 @@
 from django.db import models
 
 
-class Users(models.Model):
+class ForceUser(models.Model):
     id = models.IntegerField(db_column='Id', primary_key=True)  # Field name made lowercase.
     billable = models.BooleanField(db_column='Billable')  # Field name made lowercase.
     branches_id = models.IntegerField(db_column='Branches_Id', blank=True, null=True)  # Field name made lowercase.
@@ -231,3 +231,32 @@ class Opportunities(models.Model):
     class Meta:
         managed = False
         db_table = 'Opportunities'
+
+
+class DevDetalleCorregida(models.Model):
+    nombrecliente = models.TextField(db_column='NombreCliente', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    clase = models.TextField(db_column='Clase', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    descripcion = models.TextField(db_column='Descripcion', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    articulo = models.TextField(db_column='Articulo', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    tipo = models.TextField(db_column='Tipo', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    numerodedocumento = models.TextField(db_column='NumeroDeDocumento', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    fecha = models.DateTimeField(db_column='Fecha', blank=True, null=True)  # Field name made lowercase.
+    cantidadvendida = models.DecimalField(db_column='CantidadVendida', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    preciodeventa = models.DecimalField(db_column='PrecioDeVenta', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    ingresos = models.DecimalField(db_column='Ingresos', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    numerosdeserie = models.TextField(db_column='NumerosDeSerie', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    representantedeventas = models.TextField(db_column='RepresentanteDeVentas', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    id_cliente_fm = models.IntegerField(db_column='Id_Cliente_FM', blank=True, null=True)  # Field name made lowercase.
+    cliente_rfc = models.TextField(db_column='Cliente_RFC', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    moneda = models.CharField(db_column='Moneda', max_length=18, db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    importe = models.DecimalField(db_column='Importe', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    tipodecambio = models.DecimalField(db_column='TipoDeCambio', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    preciounitario = models.DecimalField(db_column='PrecioUnitario', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    id_vendedor_fm = models.IntegerField(db_column='Id_Vendedor_FM', blank=True, null=True)  # Field name made lowercase.
+    tipodecambiousd = models.DecimalField(db_column='TipoDeCambioUSD', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    ingresosusd = models.DecimalField(db_column='IngresosUSD', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    estadotransaccion = models.TextField(db_column='EstadoTransaccion', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'dev_Detalle_Corregida'

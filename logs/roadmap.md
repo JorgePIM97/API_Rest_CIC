@@ -1,125 +1,104 @@
-# CIC — Roadmap
+# CIC API — Roadmap
 
-## Fase 0 — Preparación del proyecto
-- [x] Crear entorno virtual
-- [x] Crear proyecto Django
-- [x] Crear app `forcesync`
-- [x] Crear `requirements.txt`
-- [ ] Crear/validar `.env`
-- [ ] Crear/validar `.gitignore`
+## Fase 0 — Preparación
+- [x] Crear entorno virtual.
+- [x] Crear proyecto Django.
+- [x] Crear app `forcesync`.
+- [x] Instalar dependencias.
+- [x] Configurar `.env` y `.gitignore`.
+- [x] Crear carpeta `logs`.
 
-## Fase 1 — Conexión con ForceSyncDB_Worker
-- [x] Configurar SQL Server
-- [x] Verificar driver ODBC disponible
-- [x] Configurar ODBC Driver 17
-- [x] Conectarse mediante `dbshell`
-- [x] Confirmar base `ForceSyncDB_Worker`
-- [x] Consultar datos reales de `Users`
+## Fase 1 — SQL Server
+- [x] Configurar `DATABASES`.
+- [x] Usar ODBC Driver 17.
+- [x] Conectar con `ForceSyncDB_Worker`.
+- [x] Validar con `dbshell`.
+- [x] Consultar datos reales de `Users`.
 
-## Fase 2 — Modelado de tablas existentes
-- [x] Ejecutar `inspectdb`
-- [x] Generar modelos iniciales
-- [x] Revisar `Users`
-- [ ] Revisar `Activities`
-- [ ] Revisar `Calendars`
-- [ ] Revisar `Opportunities`
-- [ ] Revisar `Accounts`
-- [ ] Determinar la PK de `dev_Detalle_Corregida`
-- [ ] Convertir relaciones confirmadas a `ForeignKey`
-- [ ] Verificar `managed = False`
+## Fase 2 — Modelos existentes
+- [x] Inspeccionar `Users`.
+- [x] Inspeccionar `Activities`.
+- [x] Inspeccionar `Calendars`.
+- [x] Inspeccionar `Opportunities`.
+- [x] Inspeccionar `Accounts`.
+- [x] Inspeccionar `dev_Detalle_Corregida`.
+- [x] Renombrar `Users` a `ForceUser`.
+- [x] Mantener `managed = False`.
+- [x] Validar ORM de `ForceUser`.
+- [x] Validar ORM de `Activity`.
+- [x] Analizar relaciones lógicas con `Users`.
+- [x] Confirmar ausencia de FK físicas en SQL Server.
+- [x] Probar temporalmente `ForeignKey` en `Activity`.
+- [x] Detectar problema con valores `0` e IDs huérfanos.
+- [x] Decidir mantener `Activity.salesrepid_id` como `IntegerField`.
+- [x] Analizar `dev_Detalle_Corregida.Id_Vendedor_FM`.
+- [x] Documentar los casos `Piso` y representantes especiales.
+- [ ] Incorporar y validar `Calendar`.
+- [ ] Incorporar y validar `Opportunity`.
+- [ ] Incorporar y validar `Account`.
+- [ ] Incorporar y validar `DevDetalleCorregida`.
+- [ ] Revisar `models.py` completo.
 
-## Fase 3 — Primera API de lectura
-- [ ] Crear serializers
-- [ ] Definir campos públicos
-- [ ] Crear `ReadOnlyModelViewSet` para `Users`
-- [ ] Crear `ReadOnlyModelViewSet` para `Accounts`
-- [ ] Crear `ReadOnlyModelViewSet` para `Activities`
-- [ ] Crear `ReadOnlyModelViewSet` para `Calendars`
-- [ ] Crear `ReadOnlyModelViewSet` para `Opportunities`
-- [ ] Resolver endpoint de `dev_Detalle_Corregida`
-- [ ] Crear Routers
-- [ ] Configurar URLs
-- [ ] Probar GET lista en Postman
-- [ ] Probar GET detalle en Postman
+## Fase 3 — API GET
+- [ ] Crear `serializers.py`.
+- [ ] Crear serializers iniciales.
+- [ ] Crear endpoints GET.
+- [ ] Configurar URLs.
+- [ ] Probar con Postman.
+- [ ] Resolver vendedores inexistentes de forma segura.
 
-## Fase 4 — Relaciones y serializers anidados
-- [ ] Serializer de `Users`
-- [ ] Serializer anidado de `Activities` → `Users`
-- [ ] Serializer anidado de `Calendars` → `Users`
-- [ ] Serializer anidado de `Opportunities` → `Users`
-- [ ] Serializers de `Accounts` con múltiples vendedores
-- [ ] Revisar `related_name`
-- [ ] Utilizar `select_related`
-- [ ] Crear filtros por vendedor
+## Fase 4 — Relaciones y serializers enriquecidos
+- [ ] Resolver asociaciones lógicas con `ForceUser`.
+- [ ] Manejar valores `0`.
+- [ ] Manejar IDs huérfanos.
+- [ ] Incorporar datos de vendedor cuando exista.
+- [ ] Crear serializers anidados donde aporte valor.
 
-## Fase 5 — Autenticación
-- [ ] Configurar Django REST Framework
-- [ ] Instalar/configurar Simple JWT
-- [ ] Crear login
-- [ ] Crear refresh token
-- [ ] Crear endpoint de perfil
-- [ ] Proteger endpoints con `IsAuthenticated`
-- [ ] Probar Bearer Token desde Postman
+## Fase 5 — JWT
+- [ ] Configurar SimpleJWT.
+- [ ] Login y refresh.
+- [ ] Proteger endpoints.
+- [ ] Mantener separación entre `ForceUser` y usuarios de autenticación Django.
 
-## Fase 6 — Permisos y roles
-- [ ] Analizar roles necesarios
-- [ ] Crear permisos personalizados
-- [ ] Separar acceso administrativo y de consulta
-- [ ] Probar diferencias entre usuarios
-- [ ] Documentar matriz de permisos
+## Fase 6 — Permisos
+- [ ] Definir roles.
+- [ ] Implementar permisos.
+- [ ] Diferenciar usuario normal y administrador.
 
-## Fase 7 — Datos manuales del CIC
-Incorporar progresivamente:
-
-- [ ] `MovilidadRegistro`
-- [ ] `NotificacionesVendedores`
-- [ ] `PresupuestoSegmentos`
-- [ ] `ResumenMovilidad`
-- [ ] `StrikesVendedores`
-- [ ] `UsuariosCIC`
-
-En esta fase se determinará cuáles endpoints serán de lectura y cuáles necesitarán operaciones de escritura.
+## Fase 7 — Tablas manuales CIC
+- [ ] `MovilidadRegistro`.
+- [ ] `NotificacionesVendedores`.
+- [ ] `PresupuestoSegmentos`.
+- [ ] `ResumenMovilidad`.
+- [ ] `StrikesVendedores`.
+- [ ] `UsuariosCIC`.
 
 ## Fase 8 — Carga de Excel
-- [ ] Analizar flujo actual de `dev_Detalle_Corregida`
-- [ ] Definir endpoint para carga de Excel
-- [ ] Validar estructura del archivo
-- [ ] Validar registros
-- [ ] Definir estrategia de inserción/actualización
-- [ ] Registrar errores de importación
+- [ ] Diseñar endpoint.
+- [ ] Validar archivo.
+- [ ] Procesar datos.
+- [ ] Manejar errores y duplicados.
 
-## Fase 9 — Consultas y análisis
-- [ ] Filtros
-- [ ] Búsqueda
-- [ ] Paginación
-- [ ] Ordenamiento
-- [ ] Consultas agregadas
-- [ ] Indicadores comerciales
-- [ ] Indicadores de movilidad
-- [ ] Consultas optimizadas
+## Fase 9 — Análisis y filtros
+- [ ] Filtros por vendedor.
+- [ ] Filtros por fechas.
+- [ ] Filtros por cliente.
+- [ ] Filtros por segmento.
+- [ ] Indicadores comerciales.
 
-## Fase 10 — Integración Flutter
-- [ ] Definir contrato final de endpoints
-- [ ] Consumir JWT desde Flutter
-- [ ] Consumir usuarios
-- [ ] Consumir cuentas
-- [ ] Consumir actividades
-- [ ] Consumir calendarios
-- [ ] Consumir oportunidades
-- [ ] Consumir datos de ventas
-- [ ] Implementar manejo de errores
-- [ ] Implementar expiración/refresh del token
+## Fase 10 — Flutter
+- [ ] Definir contratos API/frontend.
+- [ ] Autenticación.
+- [ ] Consumo de endpoints.
+- [ ] Vistas CIC.
 
 ## Fase 11 — Calidad y despliegue
-- [ ] Tests unitarios
-- [ ] Tests de API
-- [ ] Validaciones
-- [ ] Manejo consistente de errores
-- [ ] Logging
-- [ ] Variables de entorno de producción
-- [ ] Configuración de CORS
-- [ ] Documentación de API
-- [ ] Preparar despliegue
+- [ ] Pruebas automatizadas.
+- [ ] Manejo uniforme de errores.
+- [ ] Logging.
+- [ ] Documentación API.
+- [ ] Configuración de producción.
+
 
 ## Flujo objetivo
 
