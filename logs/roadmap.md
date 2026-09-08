@@ -1,58 +1,44 @@
 # CIC API — Roadmap
 
 ## Fase 0 — Preparación
-- [x] Crear entorno virtual.
-- [x] Crear proyecto Django.
-- [x] Crear app `forcesync`.
+- [x] Crear entorno virtual, proyecto Django y app `forcesync`.
 - [x] Instalar dependencias.
-- [x] Configurar `.env` y `.gitignore`.
-- [x] Crear carpeta `logs`.
+- [x] Configurar `.env`, `.gitignore` y carpeta `logs`.
 
 ## Fase 1 — SQL Server
-- [x] Configurar `DATABASES`.
-- [x] Usar ODBC Driver 17.
+- [x] Configurar `DATABASES` y ODBC Driver 17.
 - [x] Conectar con `ForceSyncDB_Worker`.
-- [x] Validar con `dbshell`.
-- [x] Consultar datos reales de `Users`.
+- [x] Validar con `dbshell` y datos reales.
 
 ## Fase 2 — Modelos existentes
-- [x] Inspeccionar `Users`.
-- [x] Inspeccionar `Activities`.
-- [x] Inspeccionar `Calendars`.
-- [x] Inspeccionar `Opportunities`.
-- [x] Inspeccionar `Accounts`.
-- [x] Inspeccionar `dev_Detalle_Corregida`.
+- [x] Inspeccionar `Users`, `Activities`, `Calendars`, `Opportunities`, `Accounts` y `dev_Detalle_Corregida`.
 - [x] Renombrar `Users` a `ForceUser`.
 - [x] Mantener `managed = False`.
-- [x] Validar ORM de `ForceUser`.
-- [x] Validar ORM de `Activity`.
-- [x] Analizar relaciones lógicas con `Users`.
-- [x] Confirmar ausencia de FK físicas en SQL Server.
-- [x] Probar temporalmente `ForeignKey` en `Activity`.
-- [x] Detectar problema con valores `0` e IDs huérfanos.
-- [x] Decidir mantener `Activity.salesrepid_id` como `IntegerField`.
-- [x] Analizar `dev_Detalle_Corregida.Id_Vendedor_FM`.
-- [x] Documentar los casos `Piso` y representantes especiales.
-- [ ] Incorporar y validar `Calendar`.
-- [ ] Incorporar y validar `Opportunity`.
-- [ ] Incorporar y validar `Account`.
-- [ ] Incorporar y validar `DevDetalleCorregida`.
-- [ ] Revisar `models.py` completo.
+- [x] Validar ORM de `ForceUser`, `Activity`, `Calendar`, `Opportunity`, `Account` y `DevDetalleCorregida`.
+- [x] Analizar relaciones lógicas y ausencia de FK físicas.
+- [x] Mantener como `IntegerField` las relaciones sin integridad garantizada.
+- [x] Modelar `Calendar.sales_rep` como ForeignKey lógica con `db_constraint=False`.
+- [x] Agregar PK técnica a `dev_Detalle_Corregida`.
+- [x] Consolidar decisiones principales de `models.py`.
 
 ## Fase 3 — API GET
-- [ ] Crear `serializers.py`.
-- [ ] Crear serializers iniciales.
-- [ ] Crear endpoints GET.
-- [ ] Configurar URLs.
-- [ ] Probar con Postman.
-- [ ] Resolver vendedores inexistentes de forma segura.
+- [x] Crear `serializers.py`.
+- [x] Crear serializers para los seis modelos principales.
+- [x] Crear `ReadOnlyModelViewSet`.
+- [x] Configurar `DefaultRouter` y URLs.
+- [x] Crear endpoints GET de listado y detalle.
+- [x] Probar endpoints con Postman.
+- [x] Configurar paginación global de 50 registros.
+- [x] Ordenar QuerySets por `id`.
+- [x] Resolver vendedores inexistentes de forma segura.
 
 ## Fase 4 — Relaciones y serializers enriquecidos
-- [ ] Resolver asociaciones lógicas con `ForceUser`.
-- [ ] Manejar valores `0`.
-- [ ] Manejar IDs huérfanos.
-- [ ] Incorporar datos de vendedor cuando exista.
-- [ ] Crear serializers anidados donde aporte valor.
+- [x] Manejar valores `0` e IDs huérfanos.
+- [x] Incorporar datos de vendedor cuando existe.
+- [x] Crear serializer anidado para `Calendar`.
+- [x] Crear lista de vendedores para `Account`.
+- [x] Usar `select_related('sales_rep')` en `Calendar`.
+- [ ] Optimizar `Activity`, `Opportunity` y `Account` para evitar consultas N+1.
 
 ## Fase 5 — JWT
 - [ ] Configurar SimpleJWT.
@@ -74,16 +60,12 @@
 - [ ] `UsuariosCIC`.
 
 ## Fase 8 — Carga de Excel
-- [ ] Diseñar endpoint.
-- [ ] Validar archivo.
-- [ ] Procesar datos.
-- [ ] Manejar errores y duplicados.
+- [ ] Diseñar endpoint y validar archivo.
+- [ ] Procesar datos y manejar errores/duplicados.
+- [ ] Garantizar que la carga preserve la PK técnica de `dev_Detalle_Corregida`.
 
 ## Fase 9 — Análisis y filtros
-- [ ] Filtros por vendedor.
-- [ ] Filtros por fechas.
-- [ ] Filtros por cliente.
-- [ ] Filtros por segmento.
+- [ ] Filtros por vendedor, fechas, cliente y segmento.
 - [ ] Indicadores comerciales.
 
 ## Fase 10 — Flutter
@@ -95,31 +77,9 @@
 ## Fase 11 — Calidad y despliegue
 - [ ] Pruebas automatizadas.
 - [ ] Manejo uniforme de errores.
-- [ ] Logging.
-- [ ] Documentación API.
+- [ ] Logging y documentación API.
+- [ ] Optimización de consultas.
 - [ ] Configuración de producción.
 
-
-## Flujo objetivo
-
-```text
-Force Manager
-     ↓
-Cliente existente
-     ↓
-ForceSyncDB_Worker
-     ↓
-Django ORM
-     ↓
-Django REST Framework
-     ↓
-JWT + permisos
-     ↓
-API CIC
-     ↓
-Flutter
-```
-
-## Próximo objetivo
-
-**Terminar la Fase 2:** revisar `Activities`, `Calendars`, `Opportunities` y `Accounts`, validar sus relaciones con `Users` y preparar los modelos para comenzar los serializers y ViewSets.
+## Checkpoint actual — 2026-09-08
+Las fases 0, 1, 2 y 3 están completadas. La fase 4 está funcionalmente completada salvo la optimización de consultas N+1. El siguiente bloque de trabajo es **Fase 5 — JWT**.

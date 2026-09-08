@@ -419,3 +419,122 @@ No se convertirá automáticamente a `ForeignKey` cualquier columna que parezca 
 
 ## Próximo paso
 Continuar incorporando y validando `Calendar`, `Opportunity`, `Account` y `DevDetalleCorregida` en `forcesync/models.py`. Después se iniciará la primera API GET con Django REST Framework.
+
+## Estado actual
+Las fases de conexión, modelado inicial y primera API GET están completadas. Los seis recursos principales ya pueden consultarse mediante endpoints REST de solo lectura, con paginación global.
+
+## Convención de modelos
+| SQL Server | Django |
+|---|---|
+| `Users` | `ForceUser` |
+| `Accounts` | `Account` |
+| `Activities` | `Activity` |
+| `Calendars` | `Calendar` |
+| `Opportunities` | `Opportunity` |
+| `dev_Detalle_Corregida` | `DevDetalleCorregida` |
+
+Los modelos de tablas existentes se mantienen con `managed = False`.
+
+## Modelos validados
+
+### ForceUser
+- `db_table = 'Users'`.
+- Se agregó `__str__` con nombre y apellido.
+- ORM validado: **81 registros**.
+
+### Activity
+- ORM validado.
+- `SalesRepId_Id`: **55,266 válidos, 5 con valor 0 y 1 ID sin usuario**.
+- `salesrepid_id` permanece como `IntegerField`.
+- La prueba temporal como `ForeignKey` demostró que un valor 0 puede producir `ForceUser.DoesNotExist`.
+
+### Calendar
+- ORM validado: **20,487 registros** en la validación más reciente.
+- **20,481 IDs válidos y 6 NULL**.
+- `sales_rep` se modeló como `ForeignKey` lógica a `ForceUser`, con `db_constraint=False`.
+- `ForceUser.id=69` devolvió **183 calendarios**.
+- Calendar `115` resolvió vendedor 69; Calendar `112` resolvió `None`.
+
+> La tabla es alimentada externamente y puede cambiar, por lo que los conteos pueden variar entre validaciones.
+
+### Opportunity
+- ORM validado: **5,820 registros**.
+- `salesrepid_id` permanece como `IntegerField` por valores 0 e IDs huérfanos.
+- id `101` → vendedor 0.
+- id `105` → vendedor 51 sin `ForceUser`.
+- id `107` → vendedor 69 válido.
+
+### Account
+- ORM validado: **7,033 registros**.
+- `SalesRepId1_Id` a `SalesRepId5_Id` permanecen como `IntegerField`.
+- Pueden contener IDs válidos, `0`, `NULL` o IDs sin usuario.
+- Account `393` confirmó cuatro vendedores válidos.
+- Account `386` confirmó el caso 0/NULL.
+
+### DevDetalleCorregida
+El origen es una consulta/exportación de ventas de NetSuite cargada a SQL Server mediante Excel.
+
+La tabla originalmente no tenía PK ni índice único. Se agregó una PK técnica `Id BIGINT IDENTITY(1,1)` con restricción `PK_dev_Detalle_Corregida`. `inspectdb` la detectó como:
+
+```python
+id = models.BigAutoField(db_column='Id', primary_key=True)
+```
+
+ORM validado: **9,560 registros**.
+
+`Id_Vendedor_FM` permanece como `IntegerField`: 3,808 registros tienen vendedor válido y 5,752 tienen valor 0.
+
+## Principio para relaciones heredadas
+No se convierte automáticamente a `ForeignKey` una columna solo porque contenga un ID. Antes se revisan restricciones SQL, valores NULL/0, IDs huérfanos y significado de negocio. Si la integridad no está garantizada, se conserva `IntegerField` y la asociación se resuelve de forma segura en la API.
+
+## Capa REST
+
+### Serializers
+Se creó `forcesync/serializers.py` con:
+- `ForceUserSerializer`
+- `ActivitySerializer`
+- `CalendarSerializer`
+- `OpportunitySerializer`
+- `AccountSerializer`
+- `DevDetalleCorregidaSerializer`
+
+`Activity` y `Opportunity` usan `SerializerMethodField` para resolver vendedores de forma segura. `Calendar` usa `ForceUserSerializer` anidado mediante `source='sales_rep'`. `Account` agrega el campo calculado `vendedores`.
+
+### ViewSets
+Los seis recursos usan `ReadOnlyModelViewSet`, por lo que esta primera API expone lectura y no escritura sobre las tablas de origen.
+
+`CalendarViewSet` usa:
+
+```python
+Calendar.objects.select_related('sales_rep').order_by('id')
+```
+
+### Endpoints
+| Recurso | Listado | Detalle |
+|---|---|---|
+| Usuarios | `GET /api/usuarios/` | `GET /api/usuarios/<id>/` |
+| Actividades | `GET /api/actividades/` | `GET /api/actividades/<id>/` |
+| Calendarios | `GET /api/calendarios/` | `GET /api/calendarios/<id>/` |
+| Oportunidades | `GET /api/oportunidades/` | `GET /api/oportunidades/<id>/` |
+| Cuentas | `GET /api/cuentas/` | `GET /api/cuentas/<id>/` |
+| Ventas | `GET /api/ventas/` | `GET /api/ventas/<id>/` |
+
+Los endpoints probados respondieron **200 OK**.
+
+### Paginación
+Configuración global:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+}
+```
+
+Los QuerySets se ordenan por `id` para mantener una paginación estable.
+
+## Rendimiento pendiente
+`ActivitySerializer`, `OpportunitySerializer` y especialmente `AccountSerializer` pueden ejecutar consultas adicionales a `ForceUser` durante la serialización. La implementación actual es funcional, pero debe optimizarse antes de producción para evitar N+1.
+
+## Próximo paso
+**Fase 5 — JWT:** configurar SimpleJWT, login/refresh, proteger endpoints y mantener separados los usuarios de autenticación Django de `ForceUser`.

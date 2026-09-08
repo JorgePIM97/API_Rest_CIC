@@ -256,6 +256,7 @@ class DevDetalleCorregida(models.Model):
     tipodecambiousd = models.DecimalField(db_column='TipoDeCambioUSD', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
     ingresosusd = models.DecimalField(db_column='IngresosUSD', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
     estadotransaccion = models.TextField(db_column='EstadoTransaccion', db_collation='Modern_Spanish_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    id = models.BigAutoField(db_column='Id', primary_key=True)  # Field name made lowercase.
 
     class Meta:
         managed = False
