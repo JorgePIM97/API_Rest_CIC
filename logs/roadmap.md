@@ -14,7 +14,7 @@
 - [x] Inspeccionar `Users`, `Activities`, `Calendars`, `Opportunities`, `Accounts` y `dev_Detalle_Corregida`.
 - [x] Renombrar `Users` a `ForceUser`.
 - [x] Mantener `managed = False`.
-- [x] Validar ORM de `ForceUser`, `Activity`, `Calendar`, `Opportunity`, `Account` y `DevDetalleCorregida`.
+- [x] Validar ORM de los seis modelos principales.
 - [x] Analizar relaciones lógicas y ausencia de FK físicas.
 - [x] Mantener como `IntegerField` las relaciones sin integridad garantizada.
 - [x] Modelar `Calendar.sales_rep` como ForeignKey lógica con `db_constraint=False`.
@@ -41,10 +41,15 @@
 - [ ] Optimizar `Activity`, `Opportunity` y `Account` para evitar consultas N+1.
 
 ## Fase 5 — JWT
-- [ ] Configurar SimpleJWT.
-- [ ] Login y refresh.
-- [ ] Proteger endpoints.
-- [ ] Mantener separación entre `ForceUser` y usuarios de autenticación Django.
+- [x] Aplicar migraciones internas de autenticación de Django.
+- [x] Crear usuario Django de autenticación.
+- [x] Configurar SimpleJWT.
+- [x] Habilitar login/token y refresh.
+- [x] Proteger endpoints con `IsAuthenticated`.
+- [x] Validar 401 sin token y 200 con Bearer access.
+- [x] Validar renovación mediante refresh.
+- [x] Configurar duración explícita de access y refresh.
+- [x] Mantener separación entre `ForceUser` y usuarios de autenticación Django.
 
 ## Fase 6 — Permisos
 - [ ] Definir roles.
@@ -65,8 +70,19 @@
 - [ ] Garantizar que la carga preserve la PK técnica de `dev_Detalle_Corregida`.
 
 ## Fase 9 — Análisis y filtros
-- [ ] Filtros por vendedor, fechas, cliente y segmento.
-- [ ] Indicadores comerciales.
+- [x] Instalar y configurar `django-filter`.
+- [x] Crear `DevDetalleCorregidaFilter`.
+- [x] Filtrar ventas por vendedor, representante, cliente, artículo y estado.
+- [x] Filtrar ventas por rango de fechas.
+- [x] Filtrar ventas por rango de `ingresosusd`.
+- [x] Agregar búsqueda parcial con `SearchFilter`.
+- [x] Agregar ordenamiento con `OrderingFilter`.
+- [x] Combinar filtros, búsqueda y ordenamiento en una misma consulta.
+- [ ] Extender filtros a `Activity`.
+- [ ] Extender filtros a `Calendar`.
+- [ ] Extender filtros a `Opportunity`.
+- [ ] Evaluar filtros necesarios para `Account`.
+- [ ] Crear indicadores comerciales y endpoints de análisis.
 
 ## Fase 10 — Flutter
 - [ ] Definir contratos API/frontend.
@@ -81,5 +97,9 @@
 - [ ] Optimización de consultas.
 - [ ] Configuración de producción.
 
-## Checkpoint actual — 2026-09-08
-Las fases 0, 1, 2 y 3 están completadas. La fase 4 está funcionalmente completada salvo la optimización de consultas N+1. El siguiente bloque de trabajo es **Fase 5 — JWT**.
+## Checkpoint actual — 2026-09-09
+Las fases **0, 1, 2, 3 y 5** están completadas. La fase 4 está funcionalmente completa salvo la optimización N+1.
+
+La **Fase 9 — Análisis y filtros** ya inició y el endpoint `/api/ventas/` soporta filtros exactos, rangos de fecha e ingresos USD, búsqueda parcial y ordenamiento, todos combinables.
+
+El siguiente bloque de trabajo será extender este patrón a **actividades, calendarios y oportunidades**. La fase 6 de permisos/roles permanece pendiente y se abordará antes de exponer operaciones que requieran diferenciación de privilegios.

@@ -1,4 +1,6 @@
-from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, filters
+from .filters import DevDetalleCorregidaFilter
 
 from .models import (
     ForceUser,
@@ -51,3 +53,28 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 class DevDetalleCorregidaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DevDetalleCorregida.objects.all().order_by('id')
     serializer_class = DevDetalleCorregidaSerializer
+    filterset_class = DevDetalleCorregidaFilter
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+
+    search_fields = [
+        'nombrecliente',
+        'representantedeventas',
+        'articulo',
+        'numerodedocumento',
+    ]
+
+    ordering_fields = [
+        'fecha',
+        'ingresos',
+        'ingresosusd',
+        'representantedeventas',
+        'nombrecliente',
+        'articulo',
+    ]
+
+    ordering = ['id']
