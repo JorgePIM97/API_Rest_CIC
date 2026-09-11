@@ -1,6 +1,9 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters
 
+from django.db import connection
+# from rest_framework.response import Response
+
 from .filters import (
     DevDetalleCorregidaFilter,
     ActivityFilter,
@@ -60,6 +63,28 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
     ]
 
     ordering = ['id']
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+
+        vendedor_ids = (
+            self.get_queryset()
+            .exclude(salesrepid_id__isnull=True)
+            .exclude(salesrepid_id=0)
+            .values_list('salesrepid_id', flat=True)
+            .distinct()
+        )
+
+        vendedores = ForceUser.objects.filter(
+            id__in=vendedor_ids
+        )
+
+        context['vendedores_cache'] = {
+            vendedor.id: vendedor
+            for vendedor in vendedores
+        }
+
+        return context
 
 
 class CalendarViewSet(viewsets.ReadOnlyModelViewSet):
@@ -124,6 +149,28 @@ class OpportunityViewSet(viewsets.ReadOnlyModelViewSet):
 
     ordering = ['id']
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+
+        vendedor_ids = (
+            self.get_queryset()
+            .exclude(salesrepid_id__isnull=True)
+            .exclude(salesrepid_id=0)
+            .values_list('salesrepid_id', flat=True)
+            .distinct()
+        )
+
+        vendedores = ForceUser.objects.filter(
+            id__in=vendedor_ids
+        )
+
+        context['vendedores_cache'] = {
+            vendedor.id: vendedor
+            for vendedor in vendedores
+        }
+
+        return context
+
 
 class AccountViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Account.objects.all().order_by('id')
@@ -154,6 +201,34 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 
     ordering = ['id']
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+
+        filas = self.get_queryset().values_list(
+            'salesrepid1_id',
+            'salesrepid2_id',
+            'salesrepid3_id',
+            'salesrepid4_id',
+            'salesrepid5_id',
+        )
+
+        vendedor_ids = set()
+
+        for fila in filas:
+            for vendedor_id in fila:
+                if vendedor_id:
+                    vendedor_ids.add(vendedor_id)
+
+        vendedores = ForceUser.objects.filter(
+            id__in=vendedor_ids
+        )
+
+        context['vendedores_cache'] = {
+            vendedor.id: vendedor
+            for vendedor in vendedores
+        }
+
+        return context
 
 class DevDetalleCorregidaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DevDetalleCorregida.objects.all().order_by('id')

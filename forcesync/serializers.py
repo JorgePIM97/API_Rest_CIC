@@ -44,17 +44,19 @@ class ActivitySerializer(serializers.ModelSerializer):
         ]
 
     def get_vendedor(self, obj):
-        user = ForceUser.objects.filter(id=obj.salesrepid_id).first()
+        vendedores = self.context.get('vendedores_cache', {})
 
-        if user is None:
-            return None
+        vendedor = vendedores.get(obj.salesrepid_id)
 
-        return {
-            'id': user.id,
-            'name': user.name,
-            'lastname': user.lastname,
-            'email': user.email,
-        }
+        if vendedor:
+            return {
+                'id': vendedor.id,
+                'name': vendedor.name,
+                'lastname': vendedor.lastname,
+                'email': vendedor.email,
+            }
+
+        return None
 
 class CalendarSerializer(serializers.ModelSerializer):
     vendedor = ForceUserSerializer(
@@ -89,11 +91,12 @@ class OpportunitySerializer(serializers.ModelSerializer):
         model = Opportunity
         fields = [
             'id',
-            'reference',
             'accountid1_id',
             'accountid1_value',
-            'city',
-            'region',
+            'accountid2_id',
+            'accountid2_value',
+            'accountid3_id',
+            'accountid3_value',
             'datecreated',
             'closeddate',
             'lostdate',
@@ -111,18 +114,19 @@ class OpportunitySerializer(serializers.ModelSerializer):
         ]
 
     def get_vendedor(self, obj):
-        user = ForceUser.objects.filter(id=obj.salesrepid_id).first()
+        vendedores = self.context.get('vendedores_cache', {})
 
-        if user is None:
-            return None
+        vendedor = vendedores.get(obj.salesrepid_id)
 
-        return {
-            'id': user.id,
-            'name': user.name,
-            'lastname': user.lastname,
-            'email': user.email,
-        }
+        if vendedor:
+            return {
+                'id': vendedor.id,
+                'name': vendedor.name,
+                'lastname': vendedor.lastname,
+                'email': vendedor.email,
+            }
 
+        return None
 
 class AccountSerializer(serializers.ModelSerializer):
     vendedores = serializers.SerializerMethodField()
@@ -163,6 +167,8 @@ class AccountSerializer(serializers.ModelSerializer):
         ]
 
     def get_vendedores(self, obj):
+        vendedores_cache = self.context.get('vendedores_cache', {})
+
         vendedor_ids = [
             obj.salesrepid1_id,
             obj.salesrepid2_id,
@@ -174,17 +180,18 @@ class AccountSerializer(serializers.ModelSerializer):
         vendedores = []
 
         for vendedor_id in vendedor_ids:
+
             if not vendedor_id:
                 continue
 
-            user = ForceUser.objects.filter(id=vendedor_id).first()
+            vendedor = vendedores_cache.get(vendedor_id)
 
-            if user is not None:
+            if vendedor:
                 vendedores.append({
-                    'id': user.id,
-                    'name': user.name,
-                    'lastname': user.lastname,
-                    'email': user.email,
+                    'id': vendedor.id,
+                    'name': vendedor.name,
+                    'lastname': vendedor.lastname,
+                    'email': vendedor.email,
                 })
 
         return vendedores

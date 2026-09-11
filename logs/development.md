@@ -725,3 +725,292 @@ La consulta anterior fue validada con **200 OK**, al igual que el orden ascenden
 
 ## Próximo paso
 Extender el patrón de filtros y consultas de negocio a **Activity, Calendar y Opportunity**, definiendo para cada recurso filtros por vendedor, fechas y campos relevantes. Posteriormente se abordarán permisos/roles y el resto de indicadores comerciales.
+
+## Estado actual
+
+La API de solo lectura para los seis recursos principales está
+operativa. La autenticación JWT básica está completada y los endpoints
+de negocio están protegidos globalmente. Los endpoints de ventas,
+actividades, calendarios, oportunidades y cuentas ya soportan filtros de
+negocio, búsqueda y/o ordenamiento según el recurso. También se completó
+la optimización del patrón N+1 en Activity, Opportunity y Account.
+
+## Convención de modelos
+
+  SQL Server                Django
+  ------------------------- -----------------------
+  `Users`                   `ForceUser`
+  `Accounts`                `Account`
+  `Activities`              `Activity`
+  `Calendars`               `Calendar`
+  `Opportunities`           `Opportunity`
+  `dev_Detalle_Corregida`   `DevDetalleCorregida`
+
+Los modelos de tablas existentes se mantienen con `managed = False`.
+
+## Modelos validados
+
+### ForceUser
+
+-   `db_table = 'Users'`.
+-   Se agregó `__str__` con nombre y apellido.
+-   ORM validado: **81 registros**.
+
+### Activity
+
+-   ORM validado.
+-   `SalesRepId_Id`: **55,266 válidos, 5 con valor 0 y 1 ID sin
+    usuario**.
+-   `salesrepid_id` permanece como `IntegerField`.
+-   La prueba temporal como `ForeignKey` demostró que un valor 0 puede
+    producir `ForceUser.DoesNotExist`.
+
+### Calendar
+
+-   ORM validado: **20,487 registros** en la validación más reciente.
+-   **20,481 IDs válidos y 6 NULL**.
+-   `sales_rep` se modeló como `ForeignKey` lógica a `ForceUser`, con
+    `db_constraint=False`.
+-   `ForceUser.id=69` devolvió **183 calendarios**.
+-   Calendar `115` resolvió vendedor 69; Calendar `112` resolvió `None`.
+
+> La tabla es alimentada externamente y puede cambiar, por lo que los
+> conteos pueden variar entre validaciones.
+
+### Opportunity
+
+-   ORM validado: **5,820 registros**.
+-   `salesrepid_id` permanece como `IntegerField` por valores 0 e IDs
+    huérfanos.
+-   id `101` → vendedor 0.
+-   id `105` → vendedor 51 sin `ForceUser`.
+-   id `107` → vendedor 69 válido.
+
+### Account
+
+-   ORM validado: **7,033 registros**.
+-   `SalesRepId1_Id` a `SalesRepId5_Id` permanecen como `IntegerField`.
+-   Pueden contener IDs válidos, `0`, `NULL` o IDs sin usuario.
+-   Account `393` confirmó cuatro vendedores válidos.
+-   Account `386` confirmó el caso 0/NULL.
+
+### DevDetalleCorregida
+
+El origen es una consulta/exportación de ventas de NetSuite cargada a
+SQL Server mediante Excel.
+
+La tabla originalmente no tenía PK ni índice único. Se agregó una PK
+técnica `Id BIGINT IDENTITY(1,1)` con restricción
+`PK_dev_Detalle_Corregida`. `inspectdb` la detectó como:
+
+``` python
+id = models.BigAutoField(db_column='Id', primary_key=True)
+```
+
+ORM validado: **9,560 registros**.
+
+`Id_Vendedor_FM` permanece como `IntegerField`: 3,808 registros tienen
+vendedor válido y 5,752 tienen valor 0.
+
+## Principio para relaciones heredadas
+
+No se convierte automáticamente a `ForeignKey` una columna solo porque
+contenga un ID. Antes se revisan restricciones SQL, valores NULL/0, IDs
+huérfanos y significado de negocio. Si la integridad no está
+garantizada, se conserva `IntegerField` y la asociación se resuelve de
+forma segura en la API.
+
+## Capa REST
+
+### Serializers
+
+`forcesync/serializers.py` contiene: - `ForceUserSerializer` -
+`ActivitySerializer` - `CalendarSerializer` - `OpportunitySerializer` -
+`AccountSerializer` - `DevDetalleCorregidaSerializer`
+
+`Activity` y `Opportunity` usan `SerializerMethodField` para resolver
+vendedores de forma segura. `Calendar` usa `ForceUserSerializer` anidado
+mediante `source='sales_rep'`. `Account` agrega el campo calculado
+`vendedores`.
+
+### ViewSets
+
+Los seis recursos usan `ReadOnlyModelViewSet`, evitando escritura sobre
+las tablas de origen.
+
+`CalendarViewSet` usa:
+
+``` python
+Calendar.objects.select_related('sales_rep').order_by('id')
+```
+
+### Endpoints
+
+  ------------------------------------------------------------------------------------
+  Recurso                 Listado                     Detalle
+  ----------------------- --------------------------- --------------------------------
+  Usuarios                `GET /api/usuarios/`        `GET /api/usuarios/<id>/`
+
+  Actividades             `GET /api/actividades/`     `GET /api/actividades/<id>/`
+
+  Calendarios             `GET /api/calendarios/`     `GET /api/calendarios/<id>/`
+
+  Oportunidades           `GET /api/oportunidades/`   `GET /api/oportunidades/<id>/`
+
+  Cuentas                 `GET /api/cuentas/`         `GET /api/cuentas/<id>/`
+
+  Ventas                  `GET /api/ventas/`          `GET /api/ventas/<id>/`
+  ------------------------------------------------------------------------------------
+
+### Paginación
+
+Se mantiene `PageNumberPagination` global con `PAGE_SIZE = 50`. Los
+QuerySets se ordenan por `id` para mantener una paginación estable.
+
+## Fase 5 --- Autenticación JWT
+
+### Migraciones y usuario Django
+
+Se aplicaron las migraciones internas de `contenttypes`, `auth`, `admin`
+y `sessions`. La app `forcesync` continúa sin migraciones propias por
+trabajar con tablas heredadas `managed=False`.
+
+Se creó un superusuario Django para autenticación. Se mantiene la
+separación conceptual: - `auth_user`: credenciales y autenticación de la
+API. - `ForceUser`: usuarios/vendedores procedentes de la base externa.
+
+### SimpleJWT
+
+SimpleJWT está configurado como autenticación de DRF y `IsAuthenticated`
+como permiso global.
+
+Endpoints: - `POST /api/token/` - `POST /api/token/refresh/`
+
+Pruebas completadas: - obtención de `access` + `refresh` → **200 OK**; -
+endpoint protegido sin token → **401 Unauthorized**; - endpoint
+protegido con Bearer access → **200 OK**; - renovación mediante refresh
+→ **200 OK**.
+
+La duración de `access` y `refresh` quedó definida explícitamente
+mediante `SIMPLE_JWT` en `config/settings.py`.
+
+## Filtros y consultas de ventas
+
+Se instaló **django-filter 26.1** y se creó `forcesync/filters.py` con
+`DevDetalleCorregidaFilter`.
+
+### Filtros exactos
+
+-   `id_vendedor_fm`
+-   `representantedeventas`
+-   `nombrecliente`
+-   `articulo`
+-   `estadotransaccion`
+
+### Rangos de fecha
+
+-   `fecha_desde` → `fecha >= valor`
+-   `fecha_hasta` → `fecha <= valor`
+
+Ejemplo:
+
+``` text
+/api/ventas/?fecha_desde=2025-06-01&fecha_hasta=2025-06-30
+```
+
+### Rangos de ingresos USD
+
+-   `ingresosusd_min` → `ingresosusd >= valor`
+-   `ingresosusd_max` → `ingresosusd <= valor`
+
+### SearchFilter
+
+Búsqueda parcial habilitada sobre: - `nombrecliente` -
+`representantedeventas` - `articulo` - `numerodedocumento`
+
+Ejemplo:
+
+``` text
+/api/ventas/?search=MONCLOVA
+```
+
+### OrderingFilter
+
+Ordenamiento habilitado para: - `fecha` - `ingresos` - `ingresosusd` -
+`representantedeventas` - `nombrecliente` - `articulo`
+
+Ejemplo:
+
+``` text
+/api/ventas/?search=Adan&fecha_desde=2025-06-01&fecha_hasta=2025-06-30&ordering=-ingresosusd
+```
+
+La consulta anterior fue validada con **200 OK**, al igual que el orden
+ascendente por `ingresosusd`.
+
+## Filtros extendidos --- 2026-09-10
+
+### Activity
+
+Se creó `ActivityFilter` con filtros por vendedor, cuenta, tipo, tipo de
+check-in y rango de fechas sobre `date`. `ActivityViewSet` incorpora
+`SearchFilter` y `OrderingFilter`. Las pruebas por vendedor, rango de
+fechas y ordenamiento devolvieron **200 OK**.
+
+### Calendar
+
+Se creó `CalendarFilter`. Durante la validación se comprobó mediante
+`_meta` que: - `startdate` es `TextField`; - `enddate` es
+`DateTimeField`.
+
+Por esta razón, `fecha_desde`, `fecha_hasta` y el ordenamiento
+cronológico utilizan `enddate`. El filtro por `sales_rep=69`, rango de
+fechas 2026 y `ordering=-enddate` fue validado con **200 OK**.
+
+### Opportunity
+
+Se creó `OpportunityFilter` usando `datecreated` para `fecha_desde` y
+`fecha_hasta`. También se habilitaron filtros por vendedor, estado, tipo
+y cuenta, además de búsqueda textual y ordenamiento. Las pruebas
+devolvieron **200 OK**.
+
+### Account
+
+Se creó `AccountFilter` con filtros básicos, búsqueda y ordenamiento. Se
+agregó el parámetro personalizado `vendedor`, que utiliza `Q` para
+localizar un vendedor en cualquiera de `salesrepid1_id` a
+`salesrepid5_id`.
+
+Ejemplo validado:
+
+``` text
+/api/cuentas/?vendedor=69
+```
+
+Resultado: **200 OK**.
+
+## Optimización de consultas N+1
+
+Se eliminó el patrón de consultas repetitivas a `ForceUser` en los
+serializers de `Activity`, `Opportunity` y `Account`.
+
+La estrategia consiste en cargar los vendedores necesarios en bloque
+desde el ViewSet y exponerlos mediante `vendedores_cache` en el contexto
+del serializer.
+
+Resultados medidos: - `Activity`: **52 → 3 consultas SQL**. -
+`Opportunity`: **3 consultas SQL** después de eliminar el patrón N+1. -
+`Account`: primera optimización **8 consultas**; segunda optimización
+usando una sola consulta `values_list` para los cinco campos de
+vendedor: **4 consultas SQL**.
+
+La estructura de las respuestas JSON se mantuvo durante las pruebas.
+
+## Próximo paso
+
+Crear **indicadores comerciales y endpoints agregados de análisis** para
+que el futuro frontend Flutter consuma resultados calculados por la API
+---por ejemplo ventas totales, ventas por vendedor y ventas por
+periodo--- en lugar de descargar grandes cantidades de registros y
+realizar las agregaciones localmente. La fase de permisos/roles continúa
+pendiente.
