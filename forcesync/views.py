@@ -1,8 +1,10 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters
 
-from django.db import connection
-# from rest_framework.response import Response
+from django.db.models import Sum, Count, Avg
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models.functions import TruncMonth
 
 from .filters import (
     DevDetalleCorregidaFilter,
@@ -258,3 +260,121 @@ class DevDetalleCorregidaViewSet(viewsets.ReadOnlyModelViewSet):
     ]
 
     ordering = ['id']
+
+    @action(detail=False, methods=['get'], url_path='resumen')
+    def resumen(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        resultado = queryset.aggregate(
+            total_ingresos_usd=Sum('ingresosusd'),
+            total_ingresos_mxn=Sum('ingresos'),
+            promedio_ingresos_usd=Avg('ingresosusd'),
+            registros=Count('id'),
+        )
+
+        return Response({
+            'total_ingresos_usd': resultado['total_ingresos_usd'] or 0,
+            'total_ingresos_mxn': resultado['total_ingresos_mxn'] or 0,
+            'promedio_ingresos_usd': resultado['promedio_ingresos_usd'] or 0,
+            'registros': resultado['registros'],
+        })
+
+    @action(detail=False, methods=['get'], url_path='por-vendedor')
+    def por_vendedor(self, request):
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(id_vendedor_fm__gt=0)
+        )
+
+        resultado = (
+            queryset
+            .values(
+                'id_vendedor_fm',
+                'representantedeventas',
+            )
+            .annotate(
+                total_ingresos_usd=Sum('ingresosusd'),
+                registros=Count('id'),
+            )
+            .order_by('-total_ingresos_usd')
+        )
+
+        return Response(resultado)
+
+    @action(detail=False, methods=['get'], url_path='sin-vendedor')
+    def sin_vendedor(self, request):
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(id_vendedor_fm=0)
+        )
+
+        resultado = (
+            queryset
+            .values('representantedeventas')
+            .annotate(
+                total_ingresos_usd=Sum('ingresosusd'),
+                registros=Count('id'),
+            )
+            .order_by('-total_ingresos_usd')
+        )
+
+        return Response(resultado)
+
+    @action(detail=False, methods=['get'], url_path='por-mes')
+    def por_mes(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        resultado = (
+            queryset
+            .annotate(mes=TruncMonth('fecha'))
+            .values('mes')
+            .annotate(
+                total_ingresos_usd=Sum('ingresosusd'),
+                registros=Count('id'),
+                vendedores=Count(
+                    'id_vendedor_fm',
+                    distinct=True,
+                ),
+            )
+            .order_by('mes')
+        )
+
+        return Response(resultado)
+
+    @action(detail=False, methods=['get'], url_path='por-cliente')
+    def por_cliente(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        resultado = (
+            queryset
+            .values('nombrecliente')
+            .annotate(
+                total_ingresos_usd=Sum('ingresosusd'),
+                promedio_ingresos_usd=Avg('ingresosusd'),
+                registros=Count('id'),
+            )
+            .order_by('-total_ingresos_usd')
+        )
+
+        # Obtener límite enviado en la URL
+        limit = request.query_params.get('limit')
+
+        if limit:
+            try:
+                limit = int(limit)
+
+                if limit > 0:
+                    resultado = resultado[:limit]
+
+            except ValueError:
+                pass
+
+        # Convertir NULL de ingresos a 0
+        resultado = [
+            {
+                **fila,
+                'total_ingresos_usd': fila['total_ingresos_usd'] or 0,
+                'promedio_ingresos_usd': fila['promedio_ingresos_usd'] or 0,
+            }
+            for fila in resultado
+        ]
+
+        return Response(resultado)
